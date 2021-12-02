@@ -12,9 +12,9 @@ using std::chrono::duration;
 using std::vector;using std::complex;
 #include<thread>
 
-void moveVox(vector<double> orig,int threadid,  vector<double>& new_vec, size_t nz, size_t nr, size_t nc, double z, double r, double c, double newZ, double newR, double newC){
-  int start ;
-  int end;
+void moveVox(vector<double> orig,int thread_id,  vector<double>& new_vec, size_t nz, size_t nr, size_t nc, double z, double r, double c, double newZ, double newR, double newC,int n_thread){
+  int start = thread_id*nz*nr*nc/n_thread;
+  int end = std::min((thread_id+1)*(nz*nr*nc)/n_thread,nz*nr*nc);
   cout<<thread_id<<endl;
   int z_index;
   int r_index;
@@ -23,7 +23,7 @@ void moveVox(vector<double> orig,int threadid,  vector<double>& new_vec, size_t 
   for (int ind = start; ind < end; ind++){
    c_index = ind%nc; 
    r_index = ((ind-c_index)/nc)%nr;
-   z_index = ((((ind-c_index)/nc)-r_index)/nr;
+   z_index = (((ind-c_index)/nc)-r_index)/nr;
    new_vec[(z_index*newR*z + r_index*r)*newC + c_index*c] = orig[(z_index*nr + r_index)*nc + c_index];
 //TODO EVALUATE ABOVE, SEE IF IT WORKS 
   }
@@ -67,12 +67,11 @@ int main(){
  size_t newC = arr.shape[2]*c;
 
  std::vector<double> vec3d_new(newZ*newR* newC);
- int n_thread=4; 
+ int n_thread=10; 
  std::thread thrd[n_thread];
-
  for(int i = 0; i<n_thread; ++i){ 
     
-  thrd[i] = std::thread(moveVox,vec3d,i,std::ref(vec3d_new),nz,nr,nc,z,r,c,newZ,newR,newC); 
+  thrd[i] = std::thread(moveVox,vec3d,i,std::ref(vec3d_new),nz,nr,nc,z,r,c,newZ,newR,newC,n_thread); 
   
  }
 
@@ -81,9 +80,6 @@ int main(){
    thrd[i].join(); 
   
  }
-
-
-
 
  cnpy::npy_save("img_cpp_new.npy", &vec3d_new[0], {newZ,newR,newC},"w");
  
