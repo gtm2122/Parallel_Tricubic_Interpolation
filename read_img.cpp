@@ -6,8 +6,38 @@ using std::default_random_engine; using std::uniform_real_distribution;
 using std::mt19937;
 #include<ctime>
 #include<chrono>
+using std::chrono::milliseconds;
+using std::chrono::duration;
 #include<complex>
 using std::vector;using std::complex;
+#include<thread>
+
+void moveVox(vector<double> orig,int threadid,  vector<double>& new_vec, size_t nz, size_t nr, size_t nc, double z, double r, double c, double newZ, double newR, double newC){
+  int start ;
+  int end;
+  cout<<thread_id<<endl;
+  int z_index;
+  int r_index;
+  int c_index;
+
+  for (int ind = start; ind < end; ind++){
+   c_index = ind%nc; 
+   r_index = ((ind-c_index)/nc)%nr;
+   z_index = ((((ind-c_index)/nc)-r_index)/nr;
+   new_vec[(z_index*newR*z + r_index*r)*newC + c_index*c] = orig[(z_index*nr + r_index)*nc + c_index];
+//TODO EVALUATE ABOVE, SEE IF IT WORKS 
+  }
+/*
+  for(size_t z_index = 0; z_index<nz; ++z_index){
+   for(size_t r_index = 0; r_index<nr; ++r_index){
+    for(size_t c_index = 0; c_index<nc; ++c_index){
+     new_vec[(z_index*newR*z + r_index*r)*newC + c_index*c] = orig[(z_index*nr + r_index)*nc + c_index];
+    }
+   }
+  }
+*/
+}
+
 int main(){
  cnpy::NpyArray arr = cnpy::npy_load("four.npy");  
  
@@ -26,46 +56,36 @@ int main(){
     }
   }
  }
- 
- 
- cnpy::npy_save("img_cpp.npy", &vec3d[0], {nz,nr,nc},"w");
- return 0;
- /*z = 1;//dist(drei);
- r = 1;//dist(drei);
- c = 2;//dist(drei);
- 
+  
+ // voxelTeleportation
 
- size_t Z_new = z*nz;
- size_t R_new = r*nr;
- ize_t C_new = c*nc;
- 
- vec3d.reserve(nz);
- for (size_t z_index = 0; z_index < nz; ++z_index){
-  vec3d.emplace_back(nr);
-  for (size_t r_index = 0; r_index < nr; ++r_index){
-   vec3d[z_index].emplace_back(nc);
-   for (size_t c_index = 0; c_index < nc; ++c_index){
-    }
-  }
- }
- 
+ double z = 2;
+ double r = 2;
+ double c = 2;
+ size_t newZ = arr.shape[0]*z;
+ size_t newR = arr.shape[1]*r;
+ size_t newC = arr.shape[2]*c;
 
- cout<<"new dim = "<<Z_new<<","<<R_new<<","<<C_new<<endl;
- std::vector<std::vector<double> new_arr(Z_new*R_new*C_new);
- */
-// make new array
- /*
- for (int i = 0; i < arr.shape[0]; ++i)
-  for (int j = 0; j < arr.shape[1]; ++j)
-   for (int k = 0; k < arr.shape[2]; ++k){
-    new_arr[Z_new*int(i*z) + R_new*int(j*r) + int(k*c)] = loaded_arr[i*arr.shape[0] + j*arr.shape[1] + k] ;
-   }
-*
- for (int i = 0 ; i< Z_new*R_new*C_new; ++i){
-  cout<<new_arr[i];
+ std::vector<double> vec3d_new(newZ*newR* newC);
+ int n_thread=4; 
+ std::thread thrd[n_thread];
+
+ for(int i = 0; i<n_thread; ++i){ 
+    
+  thrd[i] = std::thread(moveVox,vec3d,i,std::ref(vec3d_new),nz,nr,nc,z,r,c,newZ,newR,newC); 
+  
  }
 
- cnpy::npy_save("img_cpp.npy",&new_arr,{Z_new,R_new,C_new},"w");
-*/
+ for(int i = 0; i<n_thread; ++i){ 
+  if (thrd[i].joinable())
+   thrd[i].join(); 
+  
+ }
+
+
+
+
+ cnpy::npy_save("img_cpp_new.npy", &vec3d_new[0], {newZ,newR,newC},"w");
+ 
  return 0;
 }
