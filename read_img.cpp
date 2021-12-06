@@ -11,33 +11,8 @@ using std::chrono::duration;
 #include<complex>
 using std::vector;using std::complex;
 #include<thread>
-
-void moveVox(vector<double> orig,int thread_id,  vector<double>& new_vec, size_t nz, size_t nr, size_t nc, double z, double r, double c, double newZ, double newR, double newC,int n_thread){
-  int start = thread_id*nz*nr*nc/n_thread;
-  int end = std::min((thread_id+1)*(nz*nr*nc)/n_thread,nz*nr*nc);
-  cout<<thread_id<<endl;
-  int z_index;
-  int r_index;
-  int c_index;
-
-  for (int ind = start; ind < end; ind++){
-   c_index = ind%nc; 
-   r_index = ((ind-c_index)/nc)%nr;
-   z_index = (((ind-c_index)/nc)-r_index)/nr;
-   new_vec[(z_index*newR*z + r_index*r)*newC + c_index*c] = orig[(z_index*nr + r_index)*nc + c_index];
-//TODO EVALUATE ABOVE, SEE IF IT WORKS 
-  }
-/*
-  for(size_t z_index = 0; z_index<nz; ++z_index){
-   for(size_t r_index = 0; r_index<nr; ++r_index){
-    for(size_t c_index = 0; c_index<nc; ++c_index){
-     new_vec[(z_index*newR*z + r_index*r)*newC + c_index*c] = orig[(z_index*nr + r_index)*nc + c_index];
-    }
-   }
-  }
-*/
-}
-
+#include "moveVox.h"
+//using std::moveVox;
 int main(){
  cnpy::NpyArray arr = cnpy::npy_load("four.npy");  
  
@@ -59,13 +34,13 @@ int main(){
   
  // voxelTeleportation
 
- double z = 2;
- double r = 2;
- double c = 2;
+ double z = 1;
+ double r = 0.5;
+ double c = 0.5;
  size_t newZ = arr.shape[0]*z;
  size_t newR = arr.shape[1]*r;
  size_t newC = arr.shape[2]*c;
-
+ cout<<" "<<newZ<<" "<<newR<<" "<<newC<<endl;
  std::vector<double> vec3d_new(newZ*newR* newC);
  int n_thread=10; 
  std::thread thrd[n_thread];
@@ -78,9 +53,14 @@ int main(){
  for(int i = 0; i<n_thread; ++i){ 
   if (thrd[i].joinable())
    thrd[i].join(); 
-  
+   //cout<<"joined"<<i<<endl; 
  }
-
+ cout<<vec3d_new.size();
+ //cout<<vec3d_new[0].size();
+ 
+ //cout<<vec3d_new[0][0].size();
+ cout<<endl;
+ // saving enlarged image waiting to be interpolated 
  cnpy::npy_save("img_cpp_new.npy", &vec3d_new[0], {newZ,newR,newC},"w");
  
  return 0;
