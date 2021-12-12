@@ -38,48 +38,108 @@ void get_A_y(vector <double> vec1d, vector<double> pos, vector<double> &A, vecto
 
 // Hermite spline functions to get the cubic polynoimial
 
-void h0(double t){
- return =2*t*t*t - 3*t*t + 1;
+double h0(double t){
+ return 2*t*t*t - 3*t*t + 1;
 }
-void h1(double t){
- return =t*t*t - 2*t*t + t;
+double h1(double t){
+ return t*t*t - 2*t*t + t;
 }
-void h2(double t){
- return =-2*t*t*t - 3*t*t;
+double h2(double t){
+ return -2*t*t*t + 3*t*t;
 }
-void h3(double t){
- return =t*t*t - t*t;
+double h3(double t){
+ return t*t*t - t*t;
+}
+
+void getSpline(int pos0,int pos1, double slope0, double slope1, double y0, double y1, vector<double> &vec,double scale){
+ 
+ double m1 = slope1*(pos1-pos0);
+ double m0 = slope0*(pos1-pos0);
+ double c0 = 0.5*(y0 + y1 + 0.125*(m0-m1));
+ double c1 = 0.03125*(18*(y1-y0)-m0-m1);
+ double c2 = 0.0625*(m1-m0);
+ double c3 = 0.03125*(2*(y0-y1)+m0+m1);
+ double b1,b2,u;
+ pos0=double(pos0);
+ pos1=double(pos1);
+ for (double i = pos0+1; i<pos1; ++i){
+  u = -1 + 2*(i-pos0)/(pos1-pos0);
+  cout<<u<<endl;
+  //u = scale*(2*u - pos1 - pos0);
+  b1 = c3;
+  b2 = c2+2*u*b1;
+  b1 = c1+2*u*b2 - b1;
+  
+  vec[i] = int(c0 + u*b1 - b2); 
+  cout<<vec[i]<<endl;
+ }
 }
 
 void cubicInt_serial(vector <double> vec1d,vector <double> pos){
- // FIGURE OUT HOW TO TO SOLVE THE TRIDIAGONAL MATRIX AFTER OBTAINING IT
- size_t a = pos.size()-1;
- vector<double> A(a*a);
- vector<double> y(a);
- get_A_y(vec1d,pos,A,y);
- vector<double> m(a);
- double w; // part of algrrtoihnm
- // TRI DIAGONAL MATRIX SOLVING SERIAL 
- for (int i = 1 ; i < a; ++i){
-  w = A[i*a+i-1]/A[a*(i-1)+i-1];
-  // parallel reduction block here since independant calculations
-  A[i*a+i] = A[i*a +i] - w*A[(i-1)*a+i];
-  //2nd parallel reduction block here 
-  y[i] = y[i] - w* y[i-1];
+ size_t n = pos.size()-1;
+ 
+ vector<double> t(n+3);
+ vector<double> y(n+3);
+ vector<double> s(n+2);
+ vector<double> m(n+3);
+ vector<double> d(n+2);
+ 
+ std::fill(t.begin(),t.end(),0);
+ std::fill(y.begin(),y.end(),0);
+ std::fill(s.begin(),s.end(),0);
+ std::fill(m.begin(),m.end(),0);
+ std::fill(d.begin(),d.end(),0);
+ 
+ for(int i = 1; i<pos.size();i++){
+ t[i] = i-1;  
+ y[i] = vec1d[pos[i-1]];
  }
  
- m[a-1] = y[a-1]/A[(a-1)*a+a-1];
+ for(int i = 1; i<n+1;++i){
+  s[i] = 1/(t[i+1]-t[i]);
+  m[i+1] += 3*s[i]*s[i]*(y[i+1]-y[i]);
+  m[i] += m[i+1];
+ }
 
-for (int i = a-2; i>-1; --i){
-  m[i] = (y[i]-A[i*a + i+1]*m[i+1])/A[i*a+i];
- }
-  
+ d[1]=0.5/s[1];
+ m[1]=d[1]*m[1];
  
+ for(int i = 2;i<n+1;++i){
+  d[i] = 1/(2*(s[i] + s[i-1]) - s[i-1]*s[i-1]*d[i-1]);
+  m[i] = d[i]*(m[i] - s[i-1]*m[i-1]);
+ }
+ 
+ for(int i =n; i>0; --i){
+   m[i] -= d[i]*s[i]*m[i+1];
+ }
+
+ t[0] = t[1] - 1;
+ t[n+2] = t[n+1] +1;
+ y[0] = y[1]-m[1];
+ y[n+2] = y[n+1]+m[n+1];
+ s[0] = s[n+1] = 1;
+ m[0] = m[1];
+ m[n+2] = m[n+1];
 
  // after obtaining solution, apply the hermite bases to get value at those points
- 
+ double y0,y1,m0,m1,h,u;
+ int pos1,pos2;
+ for (int i = 0 ; i < n+2; ++i){
+    h = t[i+1] - t[i];
+    y0 = y[i];
+    y1 = y[i+1];
+    m0 = h*m[i];
+    m1 = h*m[i+1];
+    
+    pos1 = pos[t[i]];
+    pos2 = pos[t[i+1]];
+    double scale = s[i];
+    getSpline(pos1,pos2,m0,m1,y0,y1,vec1d,scale);
 
+ }
  
+ cnpy::npy_save("interp_vec.npy", &vec1d[0], {vec1d.size()},"w");
+   
 }
 
 int main(){
@@ -105,7 +165,7 @@ int main(){
  // always convert cnpy::NpyArray to std::vector<double>
 
  
- cubicInt(arr_vec,row_pos_vec); 
+ cubicInt_serial(arr_vec,row_pos_vec); 
  //get_A_y(arr_vec, row_pos_vec);  
  return 0;
 }
