@@ -8,9 +8,6 @@ using std::vector; using std::complex;
 using std::chrono::milliseconds;
 using std::chrono::duration;
 // based on what is outlined in https://observablehq.com/@jrus/cubic-spline
-
-
-
 void get_A_y(vector <double> vec1d, vector<double> pos, vector<double> &A, vector<double> &y){
  
  size_t a = pos.size()-1;
@@ -39,14 +36,51 @@ void get_A_y(vector <double> vec1d, vector<double> pos, vector<double> &A, vecto
 */ 
 }
 
-void cubicInt(vector <double> vec1d,vector <double> pos){
+// Hermite spline functions to get the cubic polynoimial
+
+void h0(double t){
+ return =2*t*t*t - 3*t*t + 1;
+}
+void h1(double t){
+ return =t*t*t - 2*t*t + t;
+}
+void h2(double t){
+ return =-2*t*t*t - 3*t*t;
+}
+void h3(double t){
+ return =t*t*t - t*t;
+}
+
+void cubicInt_serial(vector <double> vec1d,vector <double> pos){
  // FIGURE OUT HOW TO TO SOLVE THE TRIDIAGONAL MATRIX AFTER OBTAINING IT
  size_t a = pos.size()-1;
  vector<double> A(a*a);
  vector<double> y(a);
  get_A_y(vec1d,pos,A,y);
+ vector<double> m(a);
+ double w; // part of algrrtoihnm
+ // TRI DIAGONAL MATRIX SOLVING SERIAL 
+ for (int i = 1 ; i < a; ++i){
+  w = A[i*a+i-1]/A[a*(i-1)+i-1];
+  // parallel reduction block here since independant calculations
+  A[i*a+i] = A[i*a +i] - w*A[(i-1)*a+i];
+  //2nd parallel reduction block here 
+  y[i] = y[i] - w* y[i-1];
+ }
+ 
+ m[a-1] = y[a-1]/A[(a-1)*a+a-1];
+
+for (int i = a-2; i>-1; --i){
+  m[i] = (y[i]-A[i*a + i+1]*m[i+1])/A[i*a+i];
+ }
   
-  }
+ 
+
+ // after obtaining solution, apply the hermite bases to get value at those points
+ 
+
+ 
+}
 
 int main(){
  cnpy::NpyArray arr = cnpy::npy_load("vec_img.npy");
