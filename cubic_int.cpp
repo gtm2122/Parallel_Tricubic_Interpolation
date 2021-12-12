@@ -8,49 +8,7 @@ using std::vector; using std::complex;
 using std::chrono::milliseconds;
 using std::chrono::duration;
 // based on what is outlined in https://observablehq.com/@jrus/cubic-spline
-void get_A_y(vector <double> vec1d, vector<double> pos, vector<double> &A, vector<double> &y){
- 
- size_t a = pos.size()-1;
- cout<<a;
- 
- //vector<double> A(a*a);
- //vector<double> y(a);
- A[0] = 2;
- A[(a-1)*(a)+(a-1)] = 2;
- A[(a-2)*a+(a-1)] = 1;
- A[(a-1)*a+a-2]=1;
- 
- for(int r = 1 ; r< a-1; ++r){
-   A[a*(r-1)+r] = 1;
-   A[a*(r)+(r-1)]=1;
-   A[r*a+r] = 4;
-   
-  }
-
- for(int r =0; r< a;++r){
-  y[r] = 3*(vec1d[pos[r+1]] - vec1d[pos[r]])/(pos[1]-pos[0]);
- }
-/* 
- cnpy::npy_save("A_mat.npy", &A[0], {a,a},"w");
- cnpy::npy_save("y_vec.npy", &y[0], {a},"w");
-*/ 
-}
-
 // Hermite spline functions to get the cubic polynoimial
-
-double h0(double t){
- return 2*t*t*t - 3*t*t + 1;
-}
-double h1(double t){
- return t*t*t - 2*t*t + t;
-}
-double h2(double t){
- return -2*t*t*t + 3*t*t;
-}
-double h3(double t){
- return t*t*t - t*t;
-}
-
 void getSpline(int pos0,int pos1, double slope0, double slope1, double y0, double y1, vector<double> &vec,double scale){
  
  double m1 = slope1*(pos1-pos0);
@@ -138,7 +96,7 @@ void cubicInt_serial(vector <double> vec1d,vector <double> pos){
 
  }
  
- cnpy::npy_save("interp_vec.npy", &vec1d[0], {vec1d.size()},"w");
+ //cnpy::npy_save("interp_vec.npy", &vec1d[0], {vec1d.size()},"w");
    
 }
 
