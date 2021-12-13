@@ -10,6 +10,7 @@ using std::chrono::duration;
 //#include "cubic_int.cpp"
 //using std::cubicInt_serial;
 #include "moveVox.h"
+
 void getSpline(int pos0,int pos1, double slope0, double slope1, double y0, double y1, vector<double> &vec,double scale){
  
  double m1 = slope1*(pos1-pos0);
@@ -109,7 +110,7 @@ int numR, int numC, double mult){
  for (int i = 0; i < numR ; i++){
   vector<double> local_pos (numC);
   vector <double> local_vec (int(numC*mult));
-  //cout<<i<<endl;
+  //cout<<"i"<<i<<endl;
   int start_pos = int(pos[i*numC]);  
   int ind_3 =  start_pos%size3; // C
   int ind_2 = (start_pos- ind_3)/size3 % size1; // R
@@ -119,19 +120,25 @@ int numR, int numC, double mult){
    //cout<<"j "<<j<<endl;
    //cout<<pos[i*numC+j]<<endl;
    local_pos[j] = pos[i*numC+j] - pos[i*numC];
-   cout<<"pos "<<pos[i*numC+j]<<endl;
-   cout<<"pos2 "<<local_pos[j]<<endl;
-   cout<<"val "<<vec[pos[i*numC+j]]<<endl;
+   
+   //cout<<"pos "<<pos[i*numC+j]<<endl;
+   //cout<<"pos2 "<<local_pos[j]<<endl;
+   //cout<<"val "<<vec[pos[i*numC+j]]<<endl;
+   
    local_vec[local_pos[j]] = vec[pos[i*numC+j]];
-   cout<<"val2 "<<local_vec[local_pos[j]]<<endl;
+   
+   //cout<<"val2 "<<local_vec[local_pos[j]]<<endl;
+
+   
   }
-  cout<<ind_1<<","<<ind_2<<endl;
+  /*cout<<ind_1<<","<<ind_2<<endl;
   //cout<<std::max(pos);
+  */
   cubicInt_serial(local_vec,local_pos);
      
   for(int j = 0 ; j < numC*mult ; ++j){
-   cout<<local_vec[j]<<endl;
-   cout<<(ind_2*size2+ind_1)*size3+j<<endl;
+   //cout<<local_vec[j]<<endl;
+   //cout<<(ind_2*size2+ind_1)*size3+j<<endl;
    vec[(ind_2*size2+ind_1)*size3+j] = local_vec[j];
    //local_pos[j] = local_pos[j] + pos[i*numC];
    //cout<<"local pos "<<local_pos[j]<<endl;
@@ -143,7 +150,7 @@ int numR, int numC, double mult){
 
 }
 
-int main()
+int main(int argc, char* argv[])
 {
 // First load 3D image
 // compute zrc coord arrays and the enlarged image
@@ -179,9 +186,9 @@ int main()
  std::vector<double> r_pos(nz*nc*nr);
  std::vector<double> c_pos(nz*nr*nc);
 
- int n_thread=10; 
+ int n_thread=atoi(argv[1]); 
  std::thread thrd_move[n_thread];
-
+ cout<<n_thread;
  for(int i = 0; i<n_thread; ++i){ 
   thrd_move[i] = std::thread(moveVox,vec3d,i,std::ref(vec3d_new),std::ref(vec3d_new_pos),nz,nr,nc,z,r,c,newZ,newR,newC,n_thread);   
  }
@@ -191,12 +198,40 @@ int main()
    thrd_move[i].join(); 
    //cout<<"joined"<<i<<endl; 
  }
- 
+ //cout<<"here"; 
  zrc_pos(z_pos,r_pos,c_pos,nz,nr,nc,z,r,c);
-  
+ //cout<<"here"; 
  // after obtaining zrc pos and big image, we now run interpolation for all columns 
- interpolate(c_pos, vec3d_new,newR,newZ, newC, int(nz*nr), nc, c);
- //interpolate(r_pos, vec3d_new,int(z*nz),int(c*nc), int(z*nz), int(nc*nz), nr, r);
+ std::thread thrd_int[n_thread];
+ for(int i = 0 ; i<n_thread;++i){
+  int step_size = int(nz*nr)/n_thread;
+  int start_row = i*step_size;
+  int rem = int(nz*nr)%n_thread;
+  cout<<step_size<<endl;
+  int end_row = std::min((i+1)*step_size,int(nz*nr));
+  //cout<<"start "<<start_row<<endl;
+  //cout<<"end "<<end_row<<endl;
+  
+  if (start_row<end_row){
+  cout<<nc*(end_row-start_row)<<endl;
+  vector<double> c_pos_temp(nc*(end_row-start_row));
+  
+  for(int j =start_row; j < end_row; ++j){
+   cout<<j*nc<<endl;
+   for(int col = 0 ; col < nc; ++col){
+   
+    c_pos_temp[(j-start_row)*nc + col] = c_pos[j*nc+col];
+    cout<<(j-start_row)*nc+col<<endl;
+   }
+  }    
+  thrd_int[i] = std::thread(interpolate,c_pos_temp, std::ref(vec3d_new), int(r*nr), int(z*nz), int(c*nc), int((end_row-start_row)), nc, c);
+  }  
+ }
+for (int i = 0 ; i<n_thread; ++i){
+ if (thrd_int[i].joinable())
+ thrd_int[i].join();
+}
+//interpolate(r_pos, vec3d_new,int(z*nz),int(c*nc), int(z*nz), int(nc*nz), nr, r);
  cout<<"int done";
  //interpolate(z_pos, vec3d_new,int(r*nr),int(c*nc), int(z*nc), int(nc*nr), nz, z);
  
