@@ -194,8 +194,29 @@ int main()
  
  zrc_pos(z_pos,r_pos,c_pos,nz,nr,nc,z,r,c);
   
- // after obtaining zrc pos and big age, we now run interpolation for all columns 
- interpolate(c_pos, vec3d_new,int(r*nr),int(z*nz), int(c*nc), int(z*nr), nc, c);
+ // after obtaining zrc pos and big image, we now run interpolation for all columns in parallel using threading
+
+ int n_thread = 10;
+ 
+ for(int i = 0 ; i<n_thread;++i){
+  int step_size = (nz*nr+(n_thread-nz*nr%n_thread))/n_thread;
+  int start_row = i*step_size;
+  int end_row = std::min((i+1)*step_size,nz*nr);
+  vector<double> c_pos_temp(nc*(end_row-start_row))
+  for(int j =start_row; j < end_row; ++j){
+   for(int col = 0 ; col < nc; ++col){
+    c_pos_temp[(j-end_row)*nc + col] = c_pos[j*nc+col]
+   }
+  }
+  interpolate(c_pos_temp, vec3d_new,newR,newZ, newC, int((end_row-start_row)*nc), nc, c);
+ 
+ }
+
+// interpolate(c_pos, vec3d_new,newR,newZ, newC, int(nz*nr), nc, c);
+ //interpolate(r_pos, vec3d_new,int(z*nz),int(c*nc), int(z*nz), int(nc*nz), nr, r);
+ cout<<"int done";
+ //interpolate(z_pos, vec3d_new,int(r*nr),int(c*nc), int(z*nc), int(nc*nr), nz, z);
+ 
  cnpy::npy_save("img_cpp_interpc.npy", &vec3d_new[0], {newZ,newR,newC},"w");
  
 
